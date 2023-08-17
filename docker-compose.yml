@@ -1,0 +1,55 @@
+version: "3"
+
+volumes:
+  redis_data:
+  sqlite_db:
+  tg_bot:
+  rabbit:
+
+services:
+  sqlite_db:
+    image: lscr.io/linuxserver/sqlitebrowser:latest
+    restart: always
+    ports:
+      - '3000:3000'
+    environment:
+      - CUSTOM_USER=Homerw223v
+      - PASSWORD=zxasqw12321
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/UTC
+    volumes:
+      - ./WartimeRussia.db:/usr/src/app
+
+  redis:
+    image: redis
+    restart: always
+    command: redis-server
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+    volumes:
+      - redis_data:/data
+
+  rabbit:
+    image: rabbitmq:latest
+    environment:
+      - RABBITMQ_DEFAULT_USER=admin
+      - RABBITMQ_DEFAULT_PASS=password
+    volumes:
+      - rabbit:/data
+    ports:
+      - "5672:5672"
+
+  tg_bot:
+    build: .
+    restart: always
+    container_name: tg_bot
+    command: sh -c "celery -A worker.celery worker --loglevel=info --concurrency=2 & python3 main.py"
+    links:
+      - redis
+    depends_on:
+      - rabbit
+      - redis
+      - sqlite_db
+    volumes:
+      - .:/usr/src/app
