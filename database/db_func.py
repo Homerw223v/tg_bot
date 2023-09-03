@@ -16,6 +16,7 @@ async def add_user_to_banned_list(user_id: str):
 async def get_banned_users():
     user = cur.execute(f'SELECT user_id FROM banned_users').fetchall()
     users = [i[0] for i in user]
+    print('-----List of banned users created')
     return users
 
 

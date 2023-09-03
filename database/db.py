@@ -31,3 +31,4 @@ async def sql_start():
                      'link STRING,'
                      'button_text STRING)')
     base.commit()
+    print('-----Database created.')
