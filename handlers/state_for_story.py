@@ -1,19 +1,23 @@
 from aiogram import Router, F
 from aiogram.fsm.context import FSMContext
 from aiogram.filters.state import State, StatesGroup
-from aiogram.types import Message, CallbackQuery, InlineKeyboardButton
-from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command, StateFilter
 
 import names.name
 from city.city import cities
+from lexicon.LEXICON_RU import LEXICON_STORY
 from names.name import publishing
 from bot.create_bot import bot, config
 from database import db_func
 from filters.filters import number_of_story_filter, date_filter_for_story, \
     set_schedule_for_posting, is_admin, process_forward_back_publish_press_filter
 from keyboards.keyboards import create_kb_for_days, create_kb_for_choosing_time, create_kb_for_not_published_stories
+from keyboards.keyboards_story import create_kb_for_send_story, create_kb_for_anonim, create_kb_for_yes_no, \
+    create_kb_for_wrong_time
 import datetime
+
+from service.strings import story_string
 from worker.celery import send_story_task, send_story_to_chat
 from service.posts import delete_time, utc
 
@@ -31,8 +35,7 @@ class FSMStory(StatesGroup):
 @router.message(Command(commands=['cancel']), StateFilter(FSMStory))
 async def process_cancel_command(message: Message, state: FSMContext):
     """Отмена машины состояний"""
-    await message.answer(text='Заполнения формы отменено.\n\nЕсли захотите отправить историю,'
-                              ' то введите команду /mystory')
+    await message.answer(text=LEXICON_STORY['cancel'])
     await state.clear()
 
 
@@ -42,9 +45,7 @@ async def process_cancel_command(message: Message, state: FSMContext):
 @router.message(Command(commands=['mystory']))
 async def my_story_command(message: Message, state: FSMContext):
     """Начало взаимодействия с формой машины состояний"""
-    await message.answer(text='Укажите в каком городе произошла ваша история.\n'
-                              'Если не хотите указывать город, можете написать Россия.\n\n'
-                              'Чтобы отменить заполнение формы введите /cancel')
+    await message.answer(text=LEXICON_STORY['city'])
     await state.set_state(FSMStory.city)
 
 
@@ -54,17 +55,10 @@ async def correct_city_name(message: Message, state: FSMContext):
     if message.text.lower() in cities:
         await state.update_data(user_id=message.from_user.id, city=message.text.capitalize())
         await state.set_state(FSMStory.is_photo)
-        await message.answer(text='Отлично. Хотите отправить фотографию или видео файл?',
-                             reply_markup=InlineKeyboardBuilder().add(
-                                 InlineKeyboardButton(
-                                     text="Да",
-                                     callback_data='yes'),
-                                 InlineKeyboardButton(
-                                     text="Нет",
-                                     callback_data='no')).as_markup())
+        await message.answer(text=LEXICON_STORY['photo'],
+                             reply_markup=create_kb_for_yes_no())
     else:
-        await message.answer(text='Такого города нет в моем списке.\n'
-                                  'Чтобы отменить заполнение формы введите /cancel')
+        await message.answer(text=LEXICON_STORY['no_city'])
 
 
 @router.message(StateFilter(FSMStory.city))
@@ -81,17 +75,15 @@ async def yes_no_for_photo(callback: CallbackQuery, state: FSMContext):
     """Хочет ли пользователь загрузить фотографию к его истории"""
     if callback.data == 'yes':
         await state.set_state(FSMStory.photo)
-        await callback.message.edit_text(text='Можалуйста отправьте вашу фотографию или видео.\n\n'
-                                              'Можно отправить только один файл.')
+        await callback.message.edit_text(text=LEXICON_STORY['send_photo'])
         await callback.answer()
     elif callback.data == 'no':
-        await callback.message.edit_text('Хорощо, обойдемся без фотографии.\n\n'
-                                         'Теперь напишите вашу историю.')
+        await callback.message.edit_text(LEXICON_STORY['no_photo'])
         await state.update_data(content_type=None, file_id=None, file_unique_id=None)
         await callback.answer()
         await state.set_state(state=FSMStory.story)
     else:
-        await callback.message.edit_text(text='Я сломался')
+        await callback.message.edit_text(text=LEXICON_STORY['something_wrong'])
         await state.clear()
 
 
@@ -110,7 +102,7 @@ async def getting_photo_or_video(message: Message, state: FSMContext):
         video = message.video
         await state.update_data(content_type='video', file_id=video.file_id, file_unique_id=video.file_unique_id)
     await state.set_state(FSMStory.story)
-    await message.answer(text='Теперь напишите вашу историю.')
+    await message.answer(text=LEXICON_STORY['send_story'])
 
 
 @router.message(StateFilter(FSMStory.photo))
@@ -127,17 +119,10 @@ async def story_correct(message: Message, state: FSMContext):
     if len(str(message.text)) > 200:
         await state.update_data(story=message.text)
         await state.set_state(FSMStory.author)
-        await message.answer('Спасибо за вашу историю.\n\n'
-                             'Вы хотите чтобы ваше имя присутствовало в истории?',
-                             reply_markup=InlineKeyboardBuilder().add(
-                                 InlineKeyboardButton(
-                                     text="Опубликовать имя",
-                                     callback_data='name'),
-                                 InlineKeyboardButton(
-                                     text="Опубликовать анонимно",
-                                     callback_data='anonim')).as_markup())
+        await message.answer(text=LEXICON_STORY['anonim'],
+                             reply_markup=create_kb_for_anonim())
     else:
-        await message.answer(text='Ваше история слишком короткая.')
+        await message.answer(text=LEXICON_STORY['short_story'])
 
 
 @router.message(StateFilter(FSMStory.story))
@@ -157,8 +142,7 @@ async def anonim_story(callback: CallbackQuery, state: FSMContext):
     elif callback.data == 'anonim':
         await state.update_data(author='Анонимно')
         await callback.answer()
-    await callback.message.edit_text(text='Спасибо за вашу историю.\n\n'
-                                          'После рассмотрения ее администратором, она будет опубликована!')
+    await callback.message.edit_text(text=LEXICON_STORY['thanks'])
     story = await state.get_data()
     story_id = await db_func.save_story(story, publishing[0])
     await send_story_to_moderator(story_id, callback.from_user.id)
@@ -176,16 +160,8 @@ async def anonim_story_wrong_type_income(message: Message):
 async def send_story_to_moderator(story_id: int, user_id: int = None):
     """Отправляем историю модератору"""
     await send_story_to_chat(story_id, config.tg_bot.admin_id)
-    await bot.send_message(config.tg_bot.admin_id, text='Опубликовать историю на канала?',
-                           reply_markup=InlineKeyboardBuilder().row(
-                               InlineKeyboardButton(text='Опубликовать позже', callback_data=f'story/{story_id}'),
-                               InlineKeyboardButton(text='Пропустить', callback_data=f"don't_send/{story_id}"),
-                               InlineKeyboardButton(text='Опубликовать сейчас', callback_data=f'send_now/{story_id}'),
-                               InlineKeyboardButton(text='Удалить историю', callback_data=f'delete/{story_id}'),
-                               InlineKeyboardButton(text='Удалить и забанить',
-                                                    callback_data=f'ban/{story_id}-{user_id}'),
-                               width=2
-                           ).as_markup())
+    await bot.send_message(config.tg_bot.admin_id, text=LEXICON_STORY['publish'],
+                           reply_markup=create_kb_for_send_story(story_id, user_id))
 
 
 """Отправляем сообщение на канал, пропускаем или удаляем историю."""
@@ -196,32 +172,31 @@ async def asking_for_sending_story(callback: CallbackQuery):
     """Inline KB Спрашиваем модератора, нужно ли отправлять исорию на канал"""
     story_id = callback.data.split('/')[1]
     if callback.data.startswith("don't_send/"):
-        await callback.message.edit_text(text="История не будет опубликована")
+        await callback.message.edit_text(text=LEXICON_STORY['no_publish'])
         await callback.answer()
     elif callback.data.startswith('send_now/'):
         await send_story_to_chat(story_id, config.tg_bot.channel_id)
-        await callback.message.edit_text('История опубликована')
+        await callback.message.edit_text(LEXICON_STORY['published'])
         await callback.answer()
     elif callback.data.startswith('delete/'):
         await db_func.delete_story(story_id)
-        await callback.message.edit_text("История успешно удалена")
+        await callback.message.edit_text(LEXICON_STORY['deleted'])
     elif callback.data.startswith('ban/'):
         data = callback.data.split('/')[1].split('-')
         await db_func.delete_story(data[0])
         await db_func.add_user_to_banned_list(data[1])
         names.name.banned_users.append(callback.from_user.id)
-        await callback.message.edit_text('Пользователь добавлен в чёрный список')
+        await callback.message.edit_text(LEXICON_STORY['black_list'])
         await callback.answer()
     else:
-        await callback.message.edit_text(text='Когда хотите опубликовать историю?',
+        await callback.message.edit_text(text=LEXICON_STORY['date'],
                                          reply_markup=create_kb_for_days(callback.data))
         await callback.answer()
 
 
 @router.callback_query(date_filter_for_story)
 async def choose_date_for_posting(callback: CallbackQuery):
-    print(callback.data)
-    await callback.message.edit_text(text='Выберите время публикации истории.',
+    await callback.message.edit_text(text=LEXICON_STORY['time'],
                                      reply_markup=create_kb_for_choosing_time(callback.data))
     await callback.answer()
 
@@ -230,22 +205,15 @@ async def choose_date_for_posting(callback: CallbackQuery):
 async def choose_time_for_posting(callback: CallbackQuery):
     data = callback.data.split('/')
     delete_time(data[2], data[3])
-    time = datetime.datetime.strptime(data[3] + ':00.000025', "%Y-%m-%d %H:%M:%S.%f")
+    time = datetime.datetime.strptime(data[3] + ':00.000025', names.name.time_format)
     if time > datetime.datetime.now():
-        await db_func.publish_story_at(data[1], time.strftime("%Y-%m-%d %H:%M:%S.%f"), publishing[1])
+        await db_func.publish_story_at(data[1], time.strftime(names.name.time_format), publishing[1])
         send_story_task.apply_async((data[1], config.tg_bot.channel_id,), eta=time - datetime.timedelta(hours=utc))
-        await callback.message.edit_text(text=f"История будет опубликована {data[3]}")
+        await callback.message.edit_text(story_string(data[3]))
     else:
         await callback.message.edit_text(
-            text='К сожалению время указанное вами уже прошло. '
-                 'Вы можете опубликовать историю сейчас или выбрать другое время',
-            reply_markup=InlineKeyboardBuilder().add(
-                InlineKeyboardButton(text='Опубликовать позже',
-                                     callback_data=f'story/{data[1]}'),
-                InlineKeyboardButton(text='Пропустить', callback_data=f"don't_send/{data[1]}"),
-                InlineKeyboardButton(text='Опубликовать сейчас',
-                                     callback_data=f'send_now/{data[1]}')
-            ).as_markup())
+            text=LEXICON_STORY['late'],
+            reply_markup=create_kb_for_wrong_time(data[1]))
 
 
 """Получаем неопубликованные истории в случае если нечего публиковать"""
