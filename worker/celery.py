@@ -10,10 +10,10 @@ from names.name import publishing
 
 celery_event_loop = asyncio.new_event_loop()
 
-# celery_app = Celery(main='celery', backend='redis://127.0.0.1:6379',
-#                     broker='redis://127.0.0.1:6379')
-celery_app = Celery(main='celery', backend='redis://redis:6379',
-                    broker='amqp://admin:password@rabbit:5672')
+celery_app = Celery(main='celery', backend='redis://127.0.0.1:6379',
+                    broker='redis://127.0.0.1:6379')
+# celery_app = Celery(main='celery', backend='redis://redis:6379',
+#                     broker='amqp://admin:password@rabbit:5672')
 celery_app.autodiscover_tasks()
 
 
@@ -41,7 +41,7 @@ async def send_story_to_chat(story_id, chat_id, reply=None):
                                    text=f'История от: {story["author"]}\nГород: {story["city"]}\n\n{story["story"]}',
                                    reply_markup=reply)
     else:
-        await bot.send_message(chat_id, text=f'История от: {story[5]}\nГород: {story[1]}\n\n{story[4]}',
+        await bot.send_message(chat_id, text=f'История от: {story["author"]}\nГород: {story["city"]}\n\n{story["story"]}',
                                reply_markup=reply)
     if chat_id == config.tg_bot.channel_id:
         await db_func.published_story(str(story_id), publishing[1])
@@ -69,8 +69,8 @@ async def send_commercial_to_chat(data: dict, chat):
                                  InlineKeyboardButton(text=data['button_text'], url=data['link'])
                              ).as_markup())
     else:
-        await bot.send_message(chat, text=f'{len(data), data}')
-        await bot.send_message(chat, text='Если пришло это сообщение значит функция получила неправильные данные.')
+        await bot.send_message(config.tg_bot.admin_id, text=f'{len(data), data}')
+        await bot.send_message(config.tg_bot.admin_id, text='Если пришло это сообщение значит функция получила неправильные данные.')
 
 
 @celery_app.task

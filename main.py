@@ -13,14 +13,9 @@ import names
 async def main():
     print('-----Starting bot...')
     await set_main_menu(bot)
-    print("-----Menu activated.")
     await sql_start()
-    print('-----Database created.')
     await create_cities()
-    print('-----List of city created')
     names.name.banned_users = await get_banned_users()
-    # print(names.name.banned_users)
-    print('-----List of banned users created')
     dp.include_routers(client_handlers.router, state_for_commercial.router, state_for_news.router,
                        state_for_story.router, hiragana_state.router, other_handlers.router)
     await bot.delete_webhook(drop_pending_updates=True)
