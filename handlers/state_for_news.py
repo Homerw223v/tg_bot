@@ -11,7 +11,6 @@ from aiogram.filters import Command
 
 from keyboards.keyboards_news import create_kb_news_fact, create_kb_correct, create_kb_when_publish
 from lexicon.LEXICON_RU import LEXICON_NEWS
-from service.posts import utc
 from service.strings import news_string
 from worker.celery import send_news_to_channel, send_news_to_channel_task
 
@@ -127,11 +126,11 @@ async def news_choose_time(message: Message, state: FSMContext):
     except ValueError:
         await message.answer(LEXICON_NEWS['wrong_time'])
     else:
-        if time < datetime.datetime.now() + datetime.timedelta(hours=utc):
+        if time < datetime.datetime.now() + datetime.timedelta(hours=names.name.utc):
             await message.answer(LEXICON_NEWS['too_late'])
         else:
             data = await state.get_data()
-            send_news_to_channel_task.apply_async((data,), eta=time - datetime.timedelta(hours=utc))
+            send_news_to_channel_task.apply_async((data,), eta=time - datetime.timedelta(hours=names.name.utc))
             await message.answer(news_string(str(time)[:19]))
             await state.clear()
 

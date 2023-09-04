@@ -1,12 +1,12 @@
 import asyncio
 from aiogram.exceptions import TelegramBadRequest
-from aiogram.types import InlineKeyboardButton
-from aiogram.utils.keyboard import InlineKeyboardBuilder
 from celery import Celery
 from bot.create_bot import bot, config
 from database import db_func
-from lexicon.LEXICON_RU import LEXICON_NEWS
+from keyboards.keyboards import create_kb_button
+from lexicon.LEXICON_RU import LEXICON_NEWS, LEXICON
 from names.name import publishing
+from service.strings import story_to_chat
 
 celery_event_loop = asyncio.new_event_loop()
 
@@ -23,26 +23,18 @@ async def send_story_to_chat(story_id, chat_id, reply=None):
     if story['content_type'] == 'photo':
         try:
             await bot.send_photo(chat_id, photo=story['file_id'],
-                                 caption=f'История от: {story["author"]}\nГород: {story["city"]}\n\n{story["story"]}',
-                                 reply_markup=reply)
+                                 caption=story_to_chat(story), reply_markup=reply)
         except TelegramBadRequest:
             await bot.send_photo(chat_id, photo=story['file_id'])
-            await bot.send_message(chat_id,
-                                   text=f'История от: {story["author"]}\nГород: {story["city"]}\n\n{story["story"]}',
-                                   reply_markup=reply)
+            await bot.send_message(chat_id, text=story_to_chat(story), reply_markup=reply)
     elif story['content_type'] == 'video':
         try:
-            await bot.send_photo(chat_id, photo=story['file_id'],
-                                 caption=f'История от: {story["author"]}\nГород: {story["city"]}\n\n{story["story"]}',
-                                 reply_markup=reply)
+            await bot.send_video(chat_id, photo=story['file_id'], caption=story_to_chat(story), reply_markup=reply)
         except TelegramBadRequest:
             await bot.send_video(chat_id, video=story['file_id'])
-            await bot.send_message(chat_id,
-                                   text=f'История от: {story["author"]}\nГород: {story["city"]}\n\n{story["story"]}',
-                                   reply_markup=reply)
+            await bot.send_message(chat_id, text=story_to_chat(story), reply_markup=reply)
     else:
-        await bot.send_message(chat_id, text=f'История от: {story["author"]}\nГород: {story["city"]}\n\n{story["story"]}',
-                               reply_markup=reply)
+        await bot.send_message(chat_id, text=story_to_chat(story), reply_markup=reply)
     if chat_id == config.tg_bot.channel_id:
         await db_func.published_story(str(story_id), publishing[1])
 
@@ -55,22 +47,17 @@ async def send_news_to_channel(data):
 async def send_commercial_to_chat(data: dict, chat):
     if data['content_type'] is None:
         text = f'{data["commercial"]}'
-        await bot.send_message(chat, text=text, reply_markup=InlineKeyboardBuilder().add(
-            InlineKeyboardButton(text=data['button_text'], url=data['link'])
-        ).as_markup())
+        await bot.send_message(chat, text=text, reply_markup=create_kb_button(data))
     elif len(data) == 7 and data['content_type'] == 'photo':
         await bot.send_photo(chat, photo=data['file_id'], caption=data['commercial'],
-                             reply_markup=InlineKeyboardBuilder().add(
-                                 InlineKeyboardButton(text=data['button_text'], url=data['link'])
-                             ).as_markup())
+                             reply_markup=create_kb_button(data))
     elif len(data) == 7 and data['content_type'] == 'video':
         await bot.send_video(chat, video=data['file_id'], caption=data['commercial'],
-                             reply_markup=InlineKeyboardBuilder().add(
-                                 InlineKeyboardButton(text=data['button_text'], url=data['link'])
-                             ).as_markup())
+                             reply_markup=create_kb_button(data))
     else:
         await bot.send_message(config.tg_bot.admin_id, text=f'{len(data), data}')
-        await bot.send_message(config.tg_bot.admin_id, text='Если пришло это сообщение значит функция получила неправильные данные.')
+        await bot.send_message(config.tg_bot.admin_id,
+                               text=LEXICON['wrong_data'])
 
 
 @celery_app.task

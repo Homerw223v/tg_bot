@@ -15,7 +15,6 @@ from aiogram.filters import Command, StateFilter
 from aiogram.filters.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
 
-from service.posts import utc
 from service.strings import commercial_string
 from worker.celery import send_commercial_to_chat, send_commercial_task
 
@@ -181,7 +180,7 @@ async def commercial_publish_time(message: Message, state: FSMContext):
     except ValueError:
         await message.answer(LEXICON_COMMERCIAL['wrong_format'])
     else:
-        if time < datetime.datetime.now() + datetime.timedelta(hours=utc):
+        if time < datetime.datetime.now() + datetime.timedelta(hours=names.name.utc):
             await message.answer(LEXICON_COMMERCIAL['too_late'])
         else:
             data = await state.get_data()
@@ -189,7 +188,8 @@ async def commercial_publish_time(message: Message, state: FSMContext):
             commercial = await db_func.get_commercial(commercial_id)
             for i in range(int(data['times'])):
                 send_commercial_task.apply_async((commercial, config.tg_bot.channel_id),
-                                                 eta=time - datetime.timedelta(hours=utc) + datetime.timedelta(days=i))
+                                                 eta=time - datetime.timedelta(
+                                                     hours=names.name.utc) + datetime.timedelta(days=i))
             await message.answer(commercial_string(str(time)[:16], data["times"]))
             await state.clear()
 

@@ -5,33 +5,18 @@ import names
 import datetime
 
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from service.posts import create_days, utc
 
-
-def days_for_choosing() -> dict:
-    day_of_weeks = dict()
-    for i in range(6):
-        day_of_weeks[str(i)] = (
-                    (datetime.datetime.now() + datetime.timedelta(hours=utc)).date() + datetime.timedelta(days=i)).strftime(
-            '%Y-%m-%d')
-    print(day_of_weeks)
-    return day_of_weeks
-
-
-names.name.five_days = days_for_choosing()
+from service.days import days_for_choosing
+from service.posts import create_days
 
 
 def create_kb_for_days(data: str) -> InlineKeyboardMarkup:
-    print(data)
     kb_builder: InlineKeyboardBuilder = InlineKeyboardBuilder()
-    # if datetime.datetime.now() > datetime.datetime.strptime(names.name.five_days['0'] + ' 23:59:59.999999',
-    #                                                         '%Y-%m-%d %H:%M:%S.%f'):
-    if datetime.datetime.now() + datetime.timedelta(hours=utc) > datetime.datetime.strptime(
-            names.name.five_days['0'] + ' 23:59:59.999999',
-            '%Y-%m-%d %H:%M:%S.%f'):
-        names.name.five_days = days_for_choosing()
+    if datetime.datetime.now() + datetime.timedelta(hours=names.name.utc) > datetime.datetime.strptime(
+            names.name.dates['0'] + ' 23:59:59.999999', names.name.time_format):
+        names.name.dates = days_for_choosing()
     buttons = []
-    for key, value in names.name.five_days.items():
+    for key, value in names.name.dates.items():
         buttons.append(InlineKeyboardButton(text=value, callback_data=f'{data}/{key}'))
     kb_builder.row(*buttons, width=2)
     kb_builder.row(InlineKeyboardButton(text='Не публиковать', callback_data=f"don't_send/{data.split('/')[1]}")).add(
@@ -42,11 +27,8 @@ def create_kb_for_days(data: str) -> InlineKeyboardMarkup:
 def create_kb_for_choosing_time(data: str) -> InlineKeyboardMarkup:
     kb_builder: InlineKeyboardBuilder = InlineKeyboardBuilder()
     info = data.split('/')
-    # if datetime.datetime.now() > datetime.datetime.strptime(names.name.days['6'] + ' 23:59:59.999999',
-    #                                                         '%Y-%m-%d %H:%M:%S.%f'):
-    if datetime.datetime.now() + datetime.timedelta(hours=utc) > datetime.datetime.strptime(
-            names.name.days['6'] + ' 23:59:59.999999',
-            '%Y-%m-%d %H:%M:%S.%f'):
+    if datetime.datetime.now() + datetime.timedelta(hours=names.name.utc) > datetime.datetime.strptime(
+            names.name.days[str(names.name.count)] + ' 23:59:59.999999', names.name.time_format):
         names.name.days = create_days()
     buttons = []
     for value in names.name.days.get(str(info[-1])):
@@ -66,3 +48,9 @@ def create_kb_for_not_published_stories(value):
                                 callback_data=f'not_published/{names.name.stories_id[value]}'),
            InlineKeyboardButton(text='Следующая', callback_data=f'next_story/{value}'), width=3)
     return kb.row(InlineKeyboardButton(text='Закончить просмотр', callback_data=f'close_stories/{value}')).as_markup()
+
+
+def create_kb_button(data) -> InlineKeyboardMarkup:
+    kb: InlineKeyboardBuilder = InlineKeyboardBuilder()
+    kb.add(InlineKeyboardButton(text=data['button_text'], url=data['link']))
+    return kb.as_markup()

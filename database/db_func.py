@@ -1,4 +1,3 @@
-import random
 from datetime import datetime
 from random import shuffle
 from .db import cur, base

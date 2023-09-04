@@ -19,7 +19,7 @@ import datetime
 
 from service.strings import story_string
 from worker.celery import send_story_task, send_story_to_chat
-from service.posts import delete_time, utc
+from service.posts import delete_time
 
 router = Router()
 
@@ -208,7 +208,8 @@ async def choose_time_for_posting(callback: CallbackQuery):
     time = datetime.datetime.strptime(data[3] + ':00.000025', names.name.time_format)
     if time > datetime.datetime.now():
         await db_func.publish_story_at(data[1], time.strftime(names.name.time_format), publishing[1])
-        send_story_task.apply_async((data[1], config.tg_bot.channel_id,), eta=time - datetime.timedelta(hours=utc))
+        send_story_task.apply_async((data[1], config.tg_bot.channel_id,),
+                                    eta=time - datetime.timedelta(hours=names.name.utc))
         await callback.message.edit_text(story_string(data[3]))
     else:
         await callback.message.edit_text(

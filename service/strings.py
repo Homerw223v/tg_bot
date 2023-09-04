@@ -12,3 +12,9 @@ def news_string(time):
 def story_string(time):
     message = f"История будет опубликована {time}"
     return message
+
+
+def story_to_chat(story) -> str:
+    text = f'История от: {story["author"]}\nГород: {story["city"]}\n\n{story["story"]}'
+    return text
+
