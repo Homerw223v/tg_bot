@@ -93,7 +93,11 @@ async def commercial_not_media_content(message: Message):
 @router.message(StateFilter(FSMCommercial.link), F.text)
 async def commercial_get_link(message: Message, state: FSMContext):
     try:
-        response = requests.get(message.text)
+        if message.text.startswith('www.'):
+            url = message.text.replace('www.', 'https://')
+        else:
+            url = message.text
+        response = requests.get(url)
     except (MissingSchema, InvalidURL, ConnectionError, LocationParseError):
         await message.answer(LEXICON_COMMERCIAL['invalid_link'])
     else:
@@ -104,7 +108,6 @@ async def commercial_get_link(message: Message, state: FSMContext):
         await message.answer(LEXICON_COMMERCIAL['button_text'])
         await state.update_data(link=message.text)
         await state.set_state(FSMCommercial.button_text)
-        print(await state.get_state())
 
 
 @router.message(StateFilter(FSMCommercial.link))
@@ -180,7 +183,7 @@ async def commercial_publish_time(message: Message, state: FSMContext):
     except ValueError:
         await message.answer(LEXICON_COMMERCIAL['wrong_format'])
     else:
-        if time < datetime.datetime.now() + datetime.timedelta(hours=names.name.utc):
+        if time < datetime.datetime.utcnow() + datetime.timedelta(hours=names.name.utc):
             await message.answer(LEXICON_COMMERCIAL['too_late'])
         else:
             data = await state.get_data()

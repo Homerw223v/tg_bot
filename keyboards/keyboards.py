@@ -12,7 +12,7 @@ from service.posts import create_days
 
 def create_kb_for_days(data: str) -> InlineKeyboardMarkup:
     kb_builder: InlineKeyboardBuilder = InlineKeyboardBuilder()
-    if datetime.datetime.now() + datetime.timedelta(hours=names.name.utc) > datetime.datetime.strptime(
+    if datetime.datetime.utcnow() + datetime.timedelta(hours=names.name.utc) > datetime.datetime.strptime(
             names.name.dates['0'] + ' 23:59:59.999999', names.name.time_format):
         names.name.dates = days_for_choosing()
     buttons = []
@@ -27,7 +27,7 @@ def create_kb_for_days(data: str) -> InlineKeyboardMarkup:
 def create_kb_for_choosing_time(data: str) -> InlineKeyboardMarkup:
     kb_builder: InlineKeyboardBuilder = InlineKeyboardBuilder()
     info = data.split('/')
-    if datetime.datetime.now() + datetime.timedelta(hours=names.name.utc) > datetime.datetime.strptime(
+    if datetime.datetime.utcnow() + datetime.timedelta(hours=names.name.utc) > datetime.datetime.strptime(
             names.name.days[str(names.name.count)] + ' 23:59:59.999999', names.name.time_format):
         names.name.days = create_days()
     buttons = []

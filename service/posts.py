@@ -38,7 +38,7 @@ def _create_weeks_dict(start_time):
 
 def create_days() -> dict:
     start_time = datetime.datetime.strptime(
-        datetime.datetime.now().replace(hour=10, minute=00).strftime('%Y-%m-%d %H:%M'), '%Y-%m-%d %H:%M')
+        datetime.datetime.utcnow().replace(hour=10, minute=00).strftime('%Y-%m-%d %H:%M'), '%Y-%m-%d %H:%M')
     week: dict = _create_weeks_dict(start_time)
     if Path(os.getcwd() + r'/days.json').exists():
         with open('days.json', 'r', encoding='utf-8') as file:

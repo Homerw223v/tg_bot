@@ -126,10 +126,11 @@ async def news_choose_time(message: Message, state: FSMContext):
     except ValueError:
         await message.answer(LEXICON_NEWS['wrong_time'])
     else:
-        if time < datetime.datetime.now() + datetime.timedelta(hours=names.name.utc):
+        if time < datetime.datetime.utcnow() + datetime.timedelta(hours=names.name.utc):
             await message.answer(LEXICON_NEWS['too_late'])
         else:
             data = await state.get_data()
+            print(time - datetime.timedelta(hours=names.name.utc))
             send_news_to_channel_task.apply_async((data,), eta=time - datetime.timedelta(hours=names.name.utc))
             await message.answer(news_string(str(time)[:19]))
             await state.clear()

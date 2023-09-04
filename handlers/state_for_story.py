@@ -206,7 +206,7 @@ async def choose_time_for_posting(callback: CallbackQuery):
     data = callback.data.split('/')
     delete_time(data[2], data[3])
     time = datetime.datetime.strptime(data[3] + ':00.000025', names.name.time_format)
-    if time > datetime.datetime.now():
+    if time > datetime.datetime.utcnow():
         await db_func.publish_story_at(data[1], time.strftime(names.name.time_format), publishing[1])
         send_story_task.apply_async((data[1], config.tg_bot.channel_id,),
                                     eta=time - datetime.timedelta(hours=names.name.utc))
