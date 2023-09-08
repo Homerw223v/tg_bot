@@ -1,6 +1,6 @@
 # Story_bot
 
-Story bot is a bot for any channel, if you want to let user send you a storu to publish in channel with autoposting 
+Story bot is a bot for any channel, if you want to let user send you a story to publish in channel with autoposting 
 
 The bot is still under development  
 
